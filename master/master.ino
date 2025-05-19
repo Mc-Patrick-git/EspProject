@@ -33,7 +33,11 @@ void loop() {
   // draw local
   u8g2.clearBuffer();
   u8g2.drawCircle(ball.x, ball.y, 3, U8G2_DRAW_ALL);
+  u8g2.setFont(u8g2_font_6x10_mr);
+  u8g2.drawStr(2, 10, "M"); // M left
   u8g2.sendBuffer();
+
+
 
   delay(20);
 
