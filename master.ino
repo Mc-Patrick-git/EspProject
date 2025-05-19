@@ -1,3 +1,4 @@
+//MSTR ver 0.1A
 #include <U8g2lib.h>
 
 // xisplay setup
