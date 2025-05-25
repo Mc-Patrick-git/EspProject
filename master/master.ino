@@ -1,8 +1,12 @@
-//MSTR ver 0.1A
-#include <U8g2lib.h>
+// MSTR ver 0.2B (Adafruit SH1106G Ver)
+#include <Adafruit_GFX.h>
+#include <Adafruit_SH110X.h>
 
-// xisplay setup
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+
+Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // ball struct
 struct Ball {
@@ -10,39 +14,45 @@ struct Ball {
   int16_t y;
 };
 
-Ball ball = {64, 32}; // ini pos 0,0
+Ball ball = {64, 32}; // ini pos
 int dx = 2, dy = 1;
 
 void setup() {
   Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, 16, 17); // RX, TX
-  u8g2.begin();
+
+  display.begin(0x3C, true); // Address 0x3C, reset=true
+  display.clearDisplay();
+  display.display();
 }
 
 void loop() {
   // move ball
   ball.x += dx;
   ball.y += dy;
-  if (ball.x <= 0 || ball.x >= 127) dx = -dx;
-  if (ball.y <= 0 || ball.y >= 63) dy = -dy;
+
+  if (ball.x <= 7 || ball.x >= 120) dx = -dx;
+  if (ball.y <= 7 || ball.y >= 56) dy = -dy;
 
   // send start byte + struct
-  Serial1.write(0xFF); // Start marker
+  Serial1.write(0xFF); // start marker
   Serial1.write((uint8_t*)&ball, sizeof(ball));
 
-  // draw local
-  u8g2.clearBuffer();
-  u8g2.drawCircle(ball.x, ball.y, 3, U8G2_DRAW_ALL);
-  u8g2.setFont(u8g2_font_6x10_mr);
-  u8g2.drawStr(2, 10, "M"); // M left
-  u8g2.sendBuffer();
+  // draw to display
+  display.clearDisplay();
 
+  // draw edge mask (blackout borders)
 
+  // draw content
+  display.drawRect(4, 4, 120, 56, SH110X_WHITE); // inner frame
+  display.fillCircle(ball.x, ball.y, 3, SH110X_WHITE); // ball
+
+  display.setTextSize(1);
+  display.setTextColor(SH110X_WHITE);
+  display.setCursor(6, 6); // adjusted for SH1106
+  display.print("M");
+
+  display.display();
 
   delay(20);
-
-Serial.print(ball.x);
-Serial.print(",");
-Serial.println(ball.y);
-
 }

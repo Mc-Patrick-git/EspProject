@@ -1,44 +1,49 @@
-//SLV ver 0.1A
-#include <U8g2lib.h>
+// SLV ver 0.2B (Adafruit SH1106G Ver)
+#include <Adafruit_GFX.h>
+#include <Adafruit_SH110X.h>
 
-// display
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
 
-// struct for ball position
+Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Ball struct
 struct Ball {
   int16_t x;
   int16_t y;
 };
 
-Ball ball = {64, 32}; // ini pos 0,0
+Ball ball = {64, 32}; // ini pos
 
 void setup() {
   Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, 16, 17); // RX, TX
-  u8g2.begin();
+  display.begin(0x3C, true); // Address 0x3C, reset=true
+  display.clearDisplay();
+  display.display();
 }
 
 void loop() {
-  // try to read new ball data fast no wait
+  // read ball data
   while (Serial1.available() > 0) {
-    // wait for start byte
     if (Serial1.read() == 0xFF) {
-      // wait until we have the full struct
-      while (Serial1.available() < sizeof(ball)) {
-        // do nothing wait for enough bytes
-      }
-      // read new ball data
+      while (Serial1.available() < sizeof(ball)) { delay(1); }
       Serial1.readBytes((uint8_t*)&ball, sizeof(ball));
     }
   }
 
-  // draw the most recently received ball
-  u8g2.clearBuffer();
-  u8g2.drawCircle(ball.x, ball.y, 3, U8G2_DRAW_ALL);
-  u8g2.sendBuffer();
+  // draw screen
+  display.clearDisplay();
 
-Serial.print(ball.x);
-Serial.print(",");
-Serial.println(ball.y);
+  // draw content
+  display.drawRect(4, 4, 120, 56, SH110X_WHITE); // Frame
+  display.fillCircle(ball.x, ball.y, 3, SH110X_WHITE); // Ball
 
+  display.setTextSize(1);
+  display.setTextColor(SH110X_WHITE);
+  display.setCursor(6, 6);
+  display.print("S");
+
+  display.display();
 }
