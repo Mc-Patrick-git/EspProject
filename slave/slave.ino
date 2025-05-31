@@ -1,4 +1,5 @@
-//SLV VER 1.1
+// SLAVE - VERSION SIMPLE
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
 
@@ -6,57 +7,66 @@
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
-Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+#define BUZZER 18
+#define LED 21
+#define BTN 14
 
-// Ball and paddles
-struct Ball {
-  int16_t x;
-  int16_t y;
-};
+Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-Ball ball = {64, 32};
-int paddleLeftY = 24;
-int paddleRightY = 24;
-const int paddleHeight = 16;
+bool failed = false;
+byte loser = 255;
 
 void setup() {
   Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, 16, 17);
+
+  pinMode(BUZZER, OUTPUT);
+  pinMode(LED, OUTPUT);
+  pinMode(BTN, INPUT_PULLUP);
+
   display.begin(0x3C, true);
   display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SH110X_WHITE);
+  display.setCursor(20, 28);
+  display.print("Slave Ready");
   display.display();
+  delay(1000);
 }
 
 void loop() {
-  // Read data
-  while (Serial1.available() > 0) {
-    if (Serial1.read() == 0xFF) {
-      while (Serial1.available() < sizeof(ball) + 2) delay(1);
-      Serial1.readBytes((uint8_t*)&ball, sizeof(ball));
-      paddleLeftY = Serial1.read();
-      paddleRightY = Serial1.read();
-    }
+  // Receive fail
+  if (Serial1.available() && !failed) {
+    loser = Serial1.read(); // 0x00 or 0x01
+    failed = true;
+
+    digitalWrite(BUZZER, HIGH);
+    digitalWrite(LED, HIGH);
+    delay(500);
+    digitalWrite(BUZZER, LOW);
+    digitalWrite(LED, LOW);
+
+    // Show fail
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(20, 20);
+    display.print("GAME OVER");
+    display.setCursor(25, 35);
+    display.print(loser == 0x00 ? "LEFT LOST" : "RIGHT LOST");
+    display.display();
   }
 
-  // Draw
-  display.clearDisplay();
+  // Button pressed
+  if (failed && digitalRead(BTN) == LOW) {
+    Serial1.write(0xFF); // Send reset
+    failed = false;
 
-  // Spikes
-  for (int y = 6; y < 60; y += 10) {
-    display.fillTriangle(0, y, 4, y + 5, 0, y + 10, SH110X_WHITE);         // Left
-    display.fillTriangle(127, y, 123, y + 5, 127, y + 10, SH110X_WHITE);   // Right
+    display.clearDisplay();
+    display.setCursor(25, 30);
+    display.print("RESET...");
+    display.display();
+    delay(1000);
+    display.clearDisplay();
+    display.display();
   }
-
-  // Borders
-  display.drawRect(4, 4, 120, 56, SH110X_WHITE);
-
-  // Paddles
-  display.fillRect(8, paddleLeftY, 4, paddleHeight, SH110X_WHITE);
-  display.fillRect(116, paddleRightY, 4, paddleHeight, SH110X_WHITE);
-
-  // Ball
-  display.fillCircle(ball.x, ball.y, 3, SH110X_WHITE);
-
-  display.display();
-  delay(20);
 }
